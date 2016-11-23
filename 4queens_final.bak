@@ -1,0 +1,292 @@
+;; The first three lines of this file were inserted by DrRacket. They record metadata
+;; about the language level of this file in a form that our tools can easily process.
+#reader(lib "htdp-intermediate-reader.ss" "lang")((modname 4queens_final) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f ())))
+(require racket/list)  
+
+;; Brute force 4 Queen solver by Alexandros Kilias  
+;;    http://alexkilias.blogspot.gr/  
+;;  
+;; Special thanks go to professor Gregor Kiczales.  
+;;  
+;; !!! If you want to use this code please !!!  
+;; !!!  contact me first for permission. !!!  
+
+;; Board is (listof Number) [-1,1] that is 16 elements long  
+
+;; Pos is Natural[0,15]  
+;; interp.  
+;; the position of a square on the board for a given p, then  
+;;  -- the row  is (quotient p 4)  
+;;  -- the column is (remainder p 4)  
+
+;; To run this code , call (queens X) where X = BD1,BD2,...,BD10.  
+
+;; Convert 0-based row and column to Pos  
+(define (r-c->pos r c)(+ (* r 4 ) c))  
+
+
+(define E 0)    ;E stands for empty (permanent can not change to Q)  
+(define Q 1)    ;Q stands for true  
+(define B -1)    ;B stands for not checked yet (can be E or Q)   
+
+(define BD1   ; not valid  
+  (list E E E E  
+        E E E E  
+        E E E E  
+        E E E E))  
+
+(define BD2   ; not valid  
+  (list Q E Q E  
+        E E E E  
+        E E E E  
+        E E E E))  
+
+(define BD3  
+  (list E Q E E ; not valid  
+        E E E E  
+        E Q E E  
+        E E E E))  
+
+(define BD4   ; not valid  
+  (list E Q E E  
+        E E Q E  
+        E E E E  
+        E E E E))  
+
+(define BD5   ; valid (one of the possible solutions)  
+  (list E E Q E  
+        Q E E E  
+        E E E Q  
+        E Q E E))  
+
+(define BD6   ; valid and can produce a solution  
+  (list B B B B  
+        B B B B  
+        B B B B  
+        B B B B))  
+
+(define BD7   ; valid and can produce a solution  
+  (list E E Q E  
+        Q B B B  
+        B B B B  
+        B B B B))  
+
+(define BD8   ; valid BUT can NOT produce a solution  
+  (list E E E Q  
+        E Q B B  
+        B B B B  
+        B B B B))  
+
+(define BD9    ;valid and can produce a solution  
+  (list E E Q E  
+        Q E E E  
+        E E E Q  
+        E B B B))  
+
+(define BD10   ;valid and can produce a solution  
+  (list B Q B B  
+        B B B B  
+        B B B B  
+        B B B B))  
+
+
+(define ROWS  
+  (list (list 0 1 2 3)  
+        (list 4 5 6 7)  
+        (list 8 9 10 11)  
+        (list 12 13 14 15)))  
+
+(define COLS  
+  (list (list 0 4 8 12)  
+        (list 1 5 9 13)  
+        (list 2 6 10 14)  
+        (list 3 7 11 15)))  
+
+(define DIAG  
+  (list (list 0 5 10 15)  
+        (list 1 6 11  )  
+        (list 2 7    )  
+        (list 4 9 14  )  
+        (list 8 13   )  
+        
+        (list 12 9 6  3)  
+        (list 8 5 2  )  
+        (list 4 1    )  
+        (list 7 10 13  )  
+        (list 11 14   )))  
+
+(define UNITS (append ROWS COLS DIAG))  
+
+;; ================  
+;; Functions:  
+
+;; Board Pos -> true or false  
+;; Produce Ε of Q at the given position on board  
+
+(check-expect (read-square BD1 (r-c->pos 0 3)) E)   
+(check-expect (read-square BD2 (r-c->pos 0 2)) Q)  
+
+(define (read-square bd p)  
+  (list-ref bd p))  
+
+;; Board Pos Natural -> Board  
+;; produce new board with E or Q at given position  
+
+(check-expect (fill-square BD1 (r-c->pos 0 0) Q)  
+              (cons Q (rest BD1)))  
+
+(define (fill-square bd p natural)  
+  (append (take bd p)  
+          (list natural)  
+          (drop bd (add1 p))))  
+
+;; Board -> Board    
+;; produce a solution for bd   
+;; assume that we know that there is a solution   
+
+;; We do not know any solutions so we can not write any check-expects  
+
+;(define (queens bd) BD1) ;stub  
+
+
+(define (queens bd)  
+  (local [(define (queens--bd bd)  
+            (if (solved? bd)  
+                bd  
+                (queens--lobd (next-boards bd))))  
+          
+          (define (queens--lobd lobd)  
+            (cond [(empty? lobd) false]  
+                  [else  
+                   (local [(define try (queens--bd (first lobd)))]  
+                     (if (not (false? try))  
+                         try  
+                         (queens--lobd (rest lobd))))]))]  
+    
+    (queens--bd bd)))  
+
+
+;; Board -> Boolean  
+;; it produces true if board is solved  
+
+(check-expect (solved? BD1) false)  
+(check-expect (solved? BD2) false)  
+(check-expect (solved? BD3) false)  
+(check-expect (solved? BD4) false)  
+(check-expect (solved? BD5) true)  
+
+;;(define (solved? bd) false) ;stub  
+
+(define (solved? bd)  
+  (if (> (queens-sum bd) 3)   
+      true  
+      false))  
+
+;; Board -> Natural  
+;; it produces the number of queens in the board  
+
+(check-expect (queens-sum BD1) 0)  
+(check-expect (queens-sum BD2) 2)  
+(check-expect (queens-sum BD3) 2)  
+(check-expect (queens-sum BD4) 2)  
+(check-expect (queens-sum BD5) 4)  
+
+(define (queens-sum bd)  
+  (cond [(empty? bd) 0]  
+        [else  
+         (if (= (first bd) 1)   
+             (+ 1 (queens-sum (rest bd)))  
+             (queens-sum (rest bd)))]))  
+
+
+
+;; Board -> (listof Board)  
+;; produce list of valid next boards from board  
+;; finds first empty square fills it with Q or E ,keeps only valid boards  
+(check-expect (next-boards BD6) (list (cons E (rest BD6))  
+                                      (cons Q (rest BD6))))  
+
+;(define (next-boards bd) empty) ;stub  
+
+(define (next-boards bd)  
+  (cond [(> (last bd) -1 ) empty]  
+        [else  
+         (keep-only-valid (fill-with-q-e (find-next bd) bd ))]))  
+
+;; Board -> Pos  
+;; produces the position of the next blank square  
+(check-expect (find-next BD6) 0)  
+(check-expect (find-next (cons Q (rest BD6))) 1)  
+(check-expect (find-next BD7) 5)  
+(check-expect (find-next BD8) 6)  
+
+;(define (find-next bd) 0) ;stub  
+
+(define (find-next bd)  
+  (cond [(empty? bd) 0 ]  
+        [else  
+         (if (= (first bd) -1 )  
+             0  
+             (+ 1 (find-next (rest bd))))]))  
+
+
+;; Pos Board -> (listof Board)  
+;; produce 2 boards with blank filled with E and Q  
+(check-expect (fill-with-q-e 0 BD6)  
+              (list (cons E (rest BD6))  
+                    (cons Q (rest BD6))))  
+
+; (define (fill-with-q-e p bd) empty) ;stub  
+
+(define (fill-with-q-e p bd)  
+  (local [(define (build-one n)  
+            (fill-square bd p n ))]  
+    (build-list 2 build-one)))  
+
+;; (listof Board) -> (listof Board)  
+;; produce list containing only valid boards  
+(check-expect (keep-only-valid (list (cons 1 (cons 1 (rest (rest BD6)))))) empty)  
+
+;(define (keep-only-valid lobd) empty) ;stub  
+
+(define (keep-only-valid lobd)  
+  (filter valid-board? lobd))  
+
+;; Board -> Boolean  
+;; Produce true if board is valid,false otherwise  
+(check-expect (valid-board? BD1) true)  
+(check-expect (valid-board? BD2) false)  
+(check-expect (valid-board? BD3) false)  
+(check-expect (valid-board? BD4) false)  
+(check-expect (valid-board? BD5) true)  
+(check-expect (valid-board? BD6) true)  
+(check-expect (valid-board? BD7) true)  
+
+; (define (valid-board? bd) false) ;stub  
+
+(define (valid-board? bd)  
+  (local [(define (valid-units? lou)  
+            (andmap valid-unit? lou))  
+          
+          (define (valid-unit? u)  
+            (no-duplicates?  
+             (keep-only-values (read-unit u))))  
+          
+          (define (read-unit u)   
+            (map read-pos u))  
+          
+          (define (read-pos p)  
+            (read-square bd p))  
+          
+          (define (keep-only-values lovf)  
+            (filter positive? lovf))  
+          
+          (define (no-duplicates? lov)  
+            (cond [(empty? lov) true]  
+                  [else  
+                   (if (member (first lov) (rest lov))  
+                       false  
+                       (no-duplicates? (rest lov)))]))]  
+    
+    
+    (valid-units? UNITS))) 
